@@ -40,9 +40,12 @@ export function createInkWorld(canvas) {
   const inkCtx = inkBuffer.getContext("2d");
 
   function resizeCanvas() {
-    canvas.width = Math.floor(window.innerWidth * window.devicePixelRatio);
-    canvas.height = Math.floor(window.innerHeight * window.devicePixelRatio);
-    ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function resizeInkBuffer() {
