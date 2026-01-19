@@ -24,6 +24,17 @@ export function createInkWorld(canvas) {
     inkR: 10,
   };
 
+  const audioSmooth = {
+    energy: 0,
+    low: 0,
+    high: 0,
+  };
+
+  const lastStamp = {
+    x: 0,
+    y: 0,
+  };
+
   const pointer = {
     down: false,
     id: null,
@@ -67,6 +78,8 @@ export function createInkWorld(canvas) {
     ball.vy = 0;
     ball.r = 10;
     ball.inkR = 10;
+    lastStamp.x = ball.x;
+    lastStamp.y = ball.y;
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, view.w(), view.h());
     resizeInkBuffer();
@@ -144,16 +157,29 @@ export function createInkWorld(canvas) {
   }
 
   function applyForces(dt, audio) {
-    const friction = 0.985;
+    const friction = 0.99;
     ball.vx *= friction;
     ball.vy *= friction;
 
-    const push = 220 * audio.energy;
-    ball.vx += (audio.high - audio.low) * push * dt;
-    ball.vy += Math.sin(performance.now() * 0.002) * 0.15 * push * dt;
+    const smooth = 1 - Math.pow(0.001, dt);
+    audioSmooth.energy += (audio.energy - audioSmooth.energy) * smooth;
+    audioSmooth.low += (audio.low - audioSmooth.low) * smooth;
+    audioSmooth.high += (audio.high - audioSmooth.high) * smooth;
 
-    ball.inkR = 6 + Math.pow(audio.energy, 1.8) * 34;
-    ball.r = 8 + Math.pow(audio.energy, 1.2) * 10;
+    const t = performance.now() * 0.0006;
+    const driftX = Math.cos(t) * 0.6 + Math.sin(t * 0.73) * 0.4;
+    const driftY = Math.sin(t) * 0.6 + Math.cos(t * 0.91) * 0.4;
+    const drift = 28;
+    ball.vx += driftX * drift * dt;
+    ball.vy += driftY * drift * dt;
+
+    const push = 160 * audioSmooth.energy;
+    const audioTilt = audioSmooth.high - audioSmooth.low;
+    ball.vx += audioTilt * push * dt;
+    ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
+
+    ball.inkR = 7 + Math.pow(audioSmooth.energy, 1.6) * 28;
+    ball.r = 9 + Math.pow(audioSmooth.energy, 1.2) * 8;
 
     const vmax = 900;
     const speed = Math.hypot(ball.vx, ball.vy);
@@ -186,13 +212,13 @@ export function createInkWorld(canvas) {
       ball.vx -= 2 * dot * nx;
       ball.vy -= 2 * dot * ny;
 
-      const restitution = 0.92;
+      const restitution = 0.78;
       ball.vx *= restitution;
       ball.vy *= restitution;
 
-      const spin = 40;
-      ball.vx += -ny * spin * (0.5 - Math.random());
-      ball.vy += nx * spin * (0.5 - Math.random());
+      const spin = 18;
+      ball.vx += -ny * spin;
+      ball.vy += nx * spin;
     }
   }
 
@@ -201,8 +227,8 @@ export function createInkWorld(canvas) {
     cam.y = ball.y - view.h() * 0.5;
   }
 
-  function stampInkToBuffer() {
-    const b = worldToBuffer(ball.x, ball.y);
+  function stampInkAt(wx, wy) {
+    const b = worldToBuffer(wx, wy);
     const r = ball.inkR;
 
     inkCtx.save();
@@ -219,6 +245,22 @@ export function createInkWorld(canvas) {
     inkCtx.fill();
 
     inkCtx.restore();
+  }
+
+  function stampInkToBuffer() {
+    const dx = ball.x - lastStamp.x;
+    const dy = ball.y - lastStamp.y;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.max(1, ball.inkR * 0.35);
+    const count = Math.max(1, Math.ceil(dist / step));
+
+    for (let i = 1; i <= count; i += 1) {
+      const t = i / count;
+      stampInkAt(lastStamp.x + dx * t, lastStamp.y + dy * t);
+    }
+
+    lastStamp.x = ball.x;
+    lastStamp.y = ball.y;
   }
 
   function drawInkBufferToScreen() {
