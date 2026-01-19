@@ -45,9 +45,16 @@ export function createInkWorld(canvas) {
     vx: 0,
     vy: 0,
     draggingBall: false,
+    downAt: 0,
+    longPressTriggered: false,
   };
 
   const ripples = [];
+  const droplets = [];
+  const wobble = {
+    time: 0,
+    strength: 0,
+  };
 
   const inkBuffer = document.createElement("canvas");
   const inkCtx = inkBuffer.getContext("2d");
@@ -119,6 +126,8 @@ export function createInkWorld(canvas) {
     pointer.lastY = event.clientY;
     pointer.vx = 0;
     pointer.vy = 0;
+    pointer.downAt = performance.now();
+    pointer.longPressTriggered = false;
 
     const w = screenToWorld(event.clientX, event.clientY);
     const d = dist2(w.x, w.y, ball.x, ball.y);
@@ -158,11 +167,36 @@ export function createInkWorld(canvas) {
   function handlePointerUp(event) {
     if (event.pointerId !== pointer.id) return;
     pointer.down = false;
+    pointer.longPressTriggered = false;
     if (pointer.draggingBall) {
       ball.vx += pointer.vx * 0.12;
       ball.vy += pointer.vy * 0.12;
     }
     pointer.draggingBall = false;
+  }
+
+  function triggerLongPress(wx, wy) {
+    const palette = [
+      { core: "rgba(248, 183, 62, 0.5)", edge: "rgba(255, 129, 48, 0.0)" },
+      { core: "rgba(142, 126, 245, 0.5)", edge: "rgba(76, 66, 190, 0.0)" },
+    ];
+    const choice = palette[Math.floor(Math.random() * palette.length)];
+    droplets.push({
+      x: wx,
+      y: wy,
+      age: 0,
+      life: 1.6,
+      core: choice.core,
+      edge: choice.edge,
+    });
+    wobble.time = 0;
+    wobble.strength = 1;
+    ripples.push({
+      x: wx,
+      y: wy,
+      age: 0,
+      strength: 1.6,
+    });
   }
 
   function applyForces(dt, audio) {
@@ -203,6 +237,24 @@ export function createInkWorld(canvas) {
       const impulse = 180 * ripple.strength * wave * falloff;
       ball.vx += (dx / dist) * impulse * dt;
       ball.vy += (dy / dist) * impulse * dt;
+    }
+
+    if (pointer.down && !pointer.draggingBall && !pointer.longPressTriggered) {
+      const held = (performance.now() - pointer.downAt) / 1000;
+      if (held > 0.45) {
+        const w = screenToWorld(pointer.x, pointer.y);
+        triggerLongPress(w.x, w.y);
+        pointer.longPressTriggered = true;
+      }
+    }
+
+    if (wobble.strength > 0.001) {
+      wobble.time += dt * 6;
+      const wobbleDecay = Math.exp(-dt * 2.6);
+      wobble.strength *= wobbleDecay;
+      const wobbleForce = 45 * wobble.strength;
+      ball.vx += Math.cos(wobble.time) * wobbleForce * dt;
+      ball.vy += Math.sin(wobble.time * 1.2) * wobbleForce * dt;
     }
 
     ball.inkR = 7 + Math.pow(audioSmooth.energy, 1.6) * 28;
@@ -327,12 +379,50 @@ export function createInkWorld(canvas) {
     ctx.stroke();
   }
 
+  function drawDroplets() {
+    for (let i = droplets.length - 1; i >= 0; i -= 1) {
+      const drop = droplets[i];
+      const t = drop.age / drop.life;
+      if (t >= 1) {
+        droplets.splice(i, 1);
+        continue;
+      }
+      const p = worldToScreen(drop.x, drop.y);
+      const swell = 1 + t * 0.6;
+      const stretch = 1 + Math.sin(t * Math.PI) * 0.9;
+      const radius = 22 + t * 30;
+      const angle = t * Math.PI * 0.8;
+      const alpha = (1 - t) * 0.85;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      ctx.scale(stretch, 1 / stretch);
+      const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius * swell);
+      grad.addColorStop(0, drop.core);
+      grad.addColorStop(1, drop.edge);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius * swell, radius * 0.7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   function step(dt, audio) {
     applyForces(dt, audio);
     integrate(dt);
     bounceInCircle();
     updateCamera();
     stampInkToBuffer();
+    for (let i = droplets.length - 1; i >= 0; i -= 1) {
+      const drop = droplets[i];
+      drop.age += dt;
+      if (drop.age >= drop.life) {
+        droplets.splice(i, 1);
+      }
+    }
   }
 
   function render() {
@@ -340,6 +430,7 @@ export function createInkWorld(canvas) {
     ctx.fillRect(0, 0, view.w(), view.h());
     drawInkBufferToScreen();
     drawWorldBorder();
+    drawDroplets();
     drawBall();
   }
 
