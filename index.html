@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sgraffito•° — Canevas circulaire</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+
+    <div id="hud">
+      <div id="top">
+        <div class="card" aria-live="polite">
+          <div id="micDot" class="dot" aria-hidden="true"></div>
+          <div class="stack">
+            <div class="title">Micro</div>
+            <div id="micTxt" class="status">Off</div>
+          </div>
+        </div>
+        <div class="card buttons">
+          <button id="btnMic" class="btn" type="button">Activer micro</button>
+          <button id="btnClear" class="btn secondary" type="button">Reset</button>
+          <button id="btnExport" class="btn secondary" type="button">Export PNG</button>
+        </div>
+      </div>
+
+      <div id="bottom">
+        <div id="hint">Glisse pour tirer / lancer la bille. La voix pousse le mouvement.</div>
+      </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
