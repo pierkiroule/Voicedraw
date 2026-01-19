@@ -47,6 +47,9 @@ export function createInkWorld(canvas) {
     draggingBall: false,
     downAt: 0,
     longPressTriggered: false,
+    lastTapAt: 0,
+    lastTapX: 0,
+    lastTapY: 0,
   };
 
   const ripples = [];
@@ -89,6 +92,7 @@ export function createInkWorld(canvas) {
     ball.inkR = 10;
     lastStamp.x = ball.x;
     lastStamp.y = ball.y;
+    droplets.length = 0;
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, view.w(), view.h());
     resizeInkBuffer();
@@ -118,6 +122,7 @@ export function createInkWorld(canvas) {
 
   function handlePointerDown(event) {
     canvas.setPointerCapture(event.pointerId);
+    const tapNow = performance.now();
     pointer.down = true;
     pointer.id = event.pointerId;
     pointer.x = event.clientX;
@@ -128,6 +133,20 @@ export function createInkWorld(canvas) {
     pointer.vy = 0;
     pointer.downAt = performance.now();
     pointer.longPressTriggered = false;
+
+    const tapDx = event.clientX - pointer.lastTapX;
+    const tapDy = event.clientY - pointer.lastTapY;
+    const tapDist = Math.hypot(tapDx, tapDy);
+    if (tapNow - pointer.lastTapAt < 300 && tapDist < 36) {
+      const w = screenToWorld(event.clientX, event.clientY);
+      triggerWatercolorTap(w.x, w.y);
+      pointer.longPressTriggered = true;
+      pointer.lastTapAt = 0;
+    } else {
+      pointer.lastTapAt = tapNow;
+      pointer.lastTapX = event.clientX;
+      pointer.lastTapY = event.clientY;
+    }
 
     const w = screenToWorld(event.clientX, event.clientY);
     const d = dist2(w.x, w.y, ball.x, ball.y);
@@ -157,10 +176,10 @@ export function createInkWorld(canvas) {
 
     if (pointer.draggingBall) {
       const w = screenToWorld(event.clientX, event.clientY);
-      ball.x += (w.x - ball.x) * 0.35;
-      ball.y += (w.y - ball.y) * 0.35;
-      ball.vx += dx * 0.06;
-      ball.vy += dy * 0.06;
+      ball.x += (w.x - ball.x) * 0.175;
+      ball.y += (w.y - ball.y) * 0.175;
+      ball.vx += dx * 0.03;
+      ball.vy += dy * 0.03;
     }
   }
 
@@ -181,13 +200,14 @@ export function createInkWorld(canvas) {
       { core: "rgba(142, 126, 245, 0.5)", edge: "rgba(76, 66, 190, 0.0)" },
     ];
     const choice = palette[Math.floor(Math.random() * palette.length)];
+    stampWatercolorAt(wx, wy, choice);
     droplets.push({
       x: wx,
       y: wy,
-      age: 0,
-      life: 1.6,
       core: choice.core,
       edge: choice.edge,
+      baseRadius: 22,
+      seed: Math.random() * Math.PI * 2,
     });
     wobble.time = 0;
     wobble.strength = 1;
@@ -196,6 +216,29 @@ export function createInkWorld(canvas) {
       y: wy,
       age: 0,
       strength: 1.6,
+    });
+  }
+
+  function triggerWatercolorTap(wx, wy) {
+    const palette = [
+      { core: "rgba(255, 214, 102, 0.6)", edge: "rgba(255, 179, 62, 0.0)" },
+      { core: "rgba(255, 196, 77, 0.55)", edge: "rgba(255, 160, 45, 0.0)" },
+      { core: "rgba(255, 230, 140, 0.5)", edge: "rgba(255, 190, 92, 0.0)" },
+    ];
+    const count = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i += 1) {
+      const pick = palette[Math.floor(Math.random() * palette.length)];
+      const offsetAngle = Math.random() * Math.PI * 2;
+      const offsetRadius = 8 + Math.random() * 26;
+      const ox = Math.cos(offsetAngle) * offsetRadius;
+      const oy = Math.sin(offsetAngle) * offsetRadius;
+      stampWatercolorAt(wx + ox, wy + oy, pick);
+    }
+    ripples.push({
+      x: wx,
+      y: wy,
+      age: 0,
+      strength: 1.1,
     });
   }
 
@@ -326,6 +369,38 @@ export function createInkWorld(canvas) {
     inkCtx.restore();
   }
 
+  function stampWatercolorAt(wx, wy, pick) {
+    const b = worldToBuffer(wx, wy);
+    const baseRadius = 30 + Math.random() * 18;
+    const ringCount = 3 + Math.floor(Math.random() * 3);
+
+    inkCtx.save();
+    inkCtx.beginPath();
+    inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
+    inkCtx.clip();
+
+    for (let i = 0; i < ringCount; i += 1) {
+      const spread = baseRadius * (0.8 + Math.random() * 0.7);
+      const grad = inkCtx.createRadialGradient(b.x, b.y, spread * 0.1, b.x, b.y, spread);
+      grad.addColorStop(0, pick.core);
+      grad.addColorStop(1, pick.edge);
+      inkCtx.fillStyle = grad;
+      inkCtx.beginPath();
+      inkCtx.ellipse(
+        b.x,
+        b.y,
+        spread * (0.8 + Math.random() * 0.35),
+        spread * (0.7 + Math.random() * 0.4),
+        Math.random() * Math.PI,
+        0,
+        Math.PI * 2
+      );
+      inkCtx.fill();
+    }
+
+    inkCtx.restore();
+  }
+
   function stampInkToBuffer() {
     const dx = ball.x - lastStamp.x;
     const dy = ball.y - lastStamp.y;
@@ -380,19 +455,18 @@ export function createInkWorld(canvas) {
   }
 
   function drawDroplets() {
-    for (let i = droplets.length - 1; i >= 0; i -= 1) {
+    for (let i = 0; i < droplets.length; i += 1) {
       const drop = droplets[i];
-      const t = drop.age / drop.life;
-      if (t >= 1) {
-        droplets.splice(i, 1);
-        continue;
-      }
       const p = worldToScreen(drop.x, drop.y);
-      const swell = 1 + t * 0.6;
-      const stretch = 1 + Math.sin(t * Math.PI) * 0.9;
-      const radius = 22 + t * 30;
-      const angle = t * Math.PI * 0.8;
-      const alpha = (1 - t) * 0.85;
+      const time = performance.now() * 0.001;
+      const wave = Math.sin(time * 1.6 + drop.seed);
+      const shimmer = Math.sin(time * 0.9 + drop.seed * 2);
+      const swell = 1 + 0.08 * wave;
+      const stretch = 1 + 0.35 * shimmer;
+      const baseRadius = drop.baseRadius ?? 22;
+      const radius = baseRadius * (1.05 + 0.12 * wave);
+      const angle = shimmer * 0.35;
+      const alpha = 0.72 + 0.18 * wave;
 
       ctx.save();
       ctx.translate(p.x, p.y);
@@ -416,13 +490,6 @@ export function createInkWorld(canvas) {
     bounceInCircle();
     updateCamera();
     stampInkToBuffer();
-    for (let i = droplets.length - 1; i >= 0; i -= 1) {
-      const drop = droplets[i];
-      drop.age += dt;
-      if (drop.age >= drop.life) {
-        droplets.splice(i, 1);
-      }
-    }
   }
 
   function render() {
