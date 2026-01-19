@@ -231,15 +231,7 @@ export function createInkWorld(canvas) {
       const offsetRadius = 8 + Math.random() * 26;
       const ox = Math.cos(offsetAngle) * offsetRadius;
       const oy = Math.sin(offsetAngle) * offsetRadius;
-      droplets.push({
-        x: wx + ox,
-        y: wy + oy,
-        age: 0,
-        life: 2.2,
-        core: pick.core,
-        edge: pick.edge,
-        baseRadius: 30 + Math.random() * 18,
-      });
+      stampWatercolorAt(wx + ox, wy + oy, pick);
     }
     ripples.push({
       x: wx,
@@ -372,6 +364,38 @@ export function createInkWorld(canvas) {
     inkCtx.beginPath();
     inkCtx.arc(b.x, b.y, r, 0, Math.PI * 2);
     inkCtx.fill();
+
+    inkCtx.restore();
+  }
+
+  function stampWatercolorAt(wx, wy, pick) {
+    const b = worldToBuffer(wx, wy);
+    const baseRadius = 30 + Math.random() * 18;
+    const ringCount = 3 + Math.floor(Math.random() * 3);
+
+    inkCtx.save();
+    inkCtx.beginPath();
+    inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
+    inkCtx.clip();
+
+    for (let i = 0; i < ringCount; i += 1) {
+      const spread = baseRadius * (0.8 + Math.random() * 0.7);
+      const grad = inkCtx.createRadialGradient(b.x, b.y, spread * 0.1, b.x, b.y, spread);
+      grad.addColorStop(0, pick.core);
+      grad.addColorStop(1, pick.edge);
+      inkCtx.fillStyle = grad;
+      inkCtx.beginPath();
+      inkCtx.ellipse(
+        b.x,
+        b.y,
+        spread * (0.8 + Math.random() * 0.35),
+        spread * (0.7 + Math.random() * 0.4),
+        Math.random() * Math.PI,
+        0,
+        Math.PI * 2
+      );
+      inkCtx.fill();
+    }
 
     inkCtx.restore();
   }
