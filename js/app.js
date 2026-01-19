@@ -7,9 +7,23 @@ const micTxt = document.getElementById("micTxt");
 const btnMic = document.getElementById("btnMic");
 const btnClear = document.getElementById("btnClear");
 const btnExport = document.getElementById("btnExport");
+const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
 
 const audio = createAudioEngine();
 const world = createInkWorld(canvas);
+
+function setModeUI(mode) {
+  modeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === mode);
+  });
+}
+
+function handleModeClick(event) {
+  const { mode } = event.currentTarget.dataset;
+  if (!mode) return;
+  world.setMode(mode);
+  setModeUI(mode);
+}
 
 function setMicUI(isOn, text) {
   micDot.classList.toggle("on", isOn);
@@ -41,6 +55,7 @@ function handleResize() {
 btnMic.addEventListener("click", handleMicClick);
 btnClear.addEventListener("click", world.resetWorld);
 btnExport.addEventListener("click", handleExport);
+modeButtons.forEach((button) => button.addEventListener("click", handleModeClick));
 
 canvas.addEventListener("pointerdown", world.handlePointerDown);
 canvas.addEventListener("pointermove", world.handlePointerMove);
@@ -49,6 +64,7 @@ canvas.addEventListener("pointercancel", world.handlePointerUp);
 
 window.addEventListener("resize", handleResize);
 world.resize();
+setModeUI(world.getMode());
 
 let last = performance.now();
 function frame(now) {

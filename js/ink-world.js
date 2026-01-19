@@ -1,6 +1,167 @@
 export function createInkWorld(canvas) {
   const ctx = canvas.getContext("2d", { alpha: false });
-  const BG = "#f4f1ea";
+  const modeSettings = {
+    sumi: {
+      label: "Sumi.e",
+      background: "#f4f1ea",
+      inkStops: [
+        { core: "rgba(20, 18, 16, 0.26)", edge: "rgba(20, 18, 16, 0.0)" },
+        { core: "rgba(32, 28, 24, 0.2)", edge: "rgba(32, 28, 24, 0.0)" },
+      ],
+      ball: {
+        fill: "#3b2320",
+        stroke: "rgba(0,0,0,0.25)",
+      },
+      physics: {
+        friction: 0.987,
+        drift: 14,
+        push: 95,
+        rippleImpulse: 140,
+        rippleFalloff: 0.017,
+        wobbleForce: 26,
+        wobbleDecay: 2.4,
+        restitution: 0.8,
+        spin: 12,
+        maxSpeed: 700,
+      },
+      inkRadius: {
+        base: 6,
+        energyScale: 20,
+        power: 1.5,
+      },
+      ballRadius: {
+        base: 8,
+        energyScale: 6,
+        power: 1.1,
+      },
+      watercolor: {
+        baseRadius: 26,
+        jitter: 14,
+        ringMin: 2,
+        ringMax: 4,
+      },
+      watercolorPalette: [
+        { core: "rgba(120, 94, 72, 0.35)", edge: "rgba(120, 94, 72, 0.0)" },
+        { core: "rgba(168, 132, 88, 0.3)", edge: "rgba(168, 132, 88, 0.0)" },
+        { core: "rgba(200, 162, 116, 0.28)", edge: "rgba(200, 162, 116, 0.0)" },
+      ],
+      dropletPalette: [
+        { core: "rgba(140, 110, 82, 0.55)", edge: "rgba(140, 110, 82, 0.0)" },
+        { core: "rgba(176, 132, 96, 0.5)", edge: "rgba(176, 132, 96, 0.0)" },
+      ],
+      dropletBaseRadius: 20,
+    },
+    firework: {
+      label: "Firework",
+      background: "#11121a",
+      inkStops: [
+        { core: "rgba(255, 106, 61, 0.28)", edge: "rgba(255, 106, 61, 0.0)" },
+        { core: "rgba(255, 214, 90, 0.26)", edge: "rgba(255, 214, 90, 0.0)" },
+        { core: "rgba(255, 72, 170, 0.24)", edge: "rgba(255, 72, 170, 0.0)" },
+      ],
+      ball: {
+        fill: "#ff4d3a",
+        stroke: "rgba(255,255,255,0.25)",
+      },
+      physics: {
+        friction: 0.97,
+        drift: 40,
+        push: 220,
+        rippleImpulse: 260,
+        rippleFalloff: 0.012,
+        wobbleForce: 60,
+        wobbleDecay: 1.8,
+        restitution: 0.86,
+        spin: 24,
+        maxSpeed: 1200,
+      },
+      inkRadius: {
+        base: 8,
+        energyScale: 34,
+        power: 1.7,
+      },
+      ballRadius: {
+        base: 10,
+        energyScale: 10,
+        power: 1.25,
+      },
+      watercolor: {
+        baseRadius: 34,
+        jitter: 18,
+        ringMin: 3,
+        ringMax: 6,
+      },
+      watercolorPalette: [
+        { core: "rgba(255, 94, 98, 0.65)", edge: "rgba(255, 94, 98, 0.0)" },
+        { core: "rgba(255, 180, 72, 0.6)", edge: "rgba(255, 180, 72, 0.0)" },
+        { core: "rgba(255, 80, 190, 0.55)", edge: "rgba(255, 80, 190, 0.0)" },
+        { core: "rgba(120, 190, 255, 0.55)", edge: "rgba(120, 190, 255, 0.0)" },
+      ],
+      dropletPalette: [
+        { core: "rgba(255, 124, 60, 0.75)", edge: "rgba(255, 124, 60, 0.0)" },
+        { core: "rgba(255, 212, 98, 0.7)", edge: "rgba(255, 212, 98, 0.0)" },
+        { core: "rgba(255, 98, 200, 0.7)", edge: "rgba(255, 98, 200, 0.0)" },
+      ],
+      dropletBaseRadius: 26,
+    },
+    generatif: {
+      label: "Art génératif",
+      background: "#f3f6ff",
+      inkStops: [
+        { core: "rgba(64, 110, 255, 0.24)", edge: "rgba(64, 110, 255, 0.0)" },
+        { core: "rgba(56, 210, 160, 0.2)", edge: "rgba(56, 210, 160, 0.0)" },
+        { core: "rgba(255, 120, 210, 0.22)", edge: "rgba(255, 120, 210, 0.0)" },
+      ],
+      ball: {
+        fill: "#4e3cff",
+        stroke: "rgba(0,0,0,0.2)",
+      },
+      physics: {
+        friction: 0.982,
+        drift: 28,
+        push: 150,
+        rippleImpulse: 190,
+        rippleFalloff: 0.015,
+        wobbleForce: 38,
+        wobbleDecay: 2.1,
+        restitution: 0.82,
+        spin: 18,
+        maxSpeed: 900,
+      },
+      inkRadius: {
+        base: 7,
+        energyScale: 26,
+        power: 1.6,
+      },
+      ballRadius: {
+        base: 9,
+        energyScale: 8,
+        power: 1.2,
+      },
+      watercolor: {
+        baseRadius: 30,
+        jitter: 16,
+        ringMin: 3,
+        ringMax: 5,
+      },
+      watercolorPalette: [
+        { core: "rgba(94, 176, 255, 0.55)", edge: "rgba(94, 176, 255, 0.0)" },
+        { core: "rgba(120, 255, 204, 0.5)", edge: "rgba(120, 255, 204, 0.0)" },
+        { core: "rgba(255, 140, 232, 0.48)", edge: "rgba(255, 140, 232, 0.0)" },
+        { core: "rgba(255, 206, 120, 0.45)", edge: "rgba(255, 206, 120, 0.0)" },
+      ],
+      dropletPalette: [
+        { core: "rgba(84, 156, 255, 0.65)", edge: "rgba(84, 156, 255, 0.0)" },
+        { core: "rgba(255, 144, 222, 0.6)", edge: "rgba(255, 144, 222, 0.0)" },
+      ],
+      dropletBaseRadius: 24,
+    },
+  };
+
+  let currentMode = "sumi";
+  let mode = modeSettings[currentMode];
+  let background = mode.background;
+  document.documentElement.style.setProperty("--bg", background);
 
   const view = {
     w: () => window.innerWidth,
@@ -62,6 +223,37 @@ export function createInkWorld(canvas) {
   const inkBuffer = document.createElement("canvas");
   const inkCtx = inkBuffer.getContext("2d");
 
+  function pickFromPalette(palette, seed) {
+    if (!palette.length) return null;
+    const t = (Math.sin(seed) + 1) / 2;
+    const index = Math.min(palette.length - 1, Math.floor(t * palette.length));
+    return palette[index];
+  }
+
+  function getInkStops(wx, wy) {
+    const seed = wx * 0.01 + wy * 0.012 + performance.now() * 0.0004;
+    return pickFromPalette(mode.inkStops, seed) ?? mode.inkStops[0];
+  }
+
+  function getWatercolorPick(wx, wy) {
+    const seed = wx * 0.02 + wy * 0.017 + performance.now() * 0.0007;
+    return pickFromPalette(mode.watercolorPalette, seed) ?? mode.watercolorPalette[0];
+  }
+
+  function getDropletPick(wx, wy) {
+    const seed = wx * 0.015 + wy * 0.018 + performance.now() * 0.0006;
+    return pickFromPalette(mode.dropletPalette, seed) ?? mode.dropletPalette[0];
+  }
+
+  function applyMode(nextMode) {
+    if (!modeSettings[nextMode]) return;
+    currentMode = nextMode;
+    mode = modeSettings[currentMode];
+    background = mode.background;
+    document.documentElement.style.setProperty("--bg", background);
+    resetWorld();
+  }
+
   function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(window.innerWidth * dpr);
@@ -76,7 +268,7 @@ export function createInkWorld(canvas) {
     inkBuffer.width = side;
     inkBuffer.height = side;
     inkCtx.setTransform(1, 0, 0, 1, 0, 0);
-    inkCtx.fillStyle = BG;
+    inkCtx.fillStyle = background;
     inkCtx.fillRect(0, 0, inkBuffer.width, inkBuffer.height);
   }
 
@@ -93,7 +285,7 @@ export function createInkWorld(canvas) {
     lastStamp.x = ball.x;
     lastStamp.y = ball.y;
     droplets.length = 0;
-    ctx.fillStyle = BG;
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, view.w(), view.h());
     resizeInkBuffer();
     updateCamera();
@@ -195,18 +387,14 @@ export function createInkWorld(canvas) {
   }
 
   function triggerLongPress(wx, wy) {
-    const palette = [
-      { core: "rgba(248, 183, 62, 0.5)", edge: "rgba(255, 129, 48, 0.0)" },
-      { core: "rgba(142, 126, 245, 0.5)", edge: "rgba(76, 66, 190, 0.0)" },
-    ];
-    const choice = palette[Math.floor(Math.random() * palette.length)];
+    const choice = getDropletPick(wx, wy);
     stampWatercolorAt(wx, wy, choice);
     droplets.push({
       x: wx,
       y: wy,
       core: choice.core,
       edge: choice.edge,
-      baseRadius: 22,
+      baseRadius: mode.dropletBaseRadius,
       seed: Math.random() * Math.PI * 2,
     });
     wobble.time = 0;
@@ -220,14 +408,9 @@ export function createInkWorld(canvas) {
   }
 
   function triggerWatercolorTap(wx, wy) {
-    const palette = [
-      { core: "rgba(255, 214, 102, 0.6)", edge: "rgba(255, 179, 62, 0.0)" },
-      { core: "rgba(255, 196, 77, 0.55)", edge: "rgba(255, 160, 45, 0.0)" },
-      { core: "rgba(255, 230, 140, 0.5)", edge: "rgba(255, 190, 92, 0.0)" },
-    ];
     const count = 3 + Math.floor(Math.random() * 3);
     for (let i = 0; i < count; i += 1) {
-      const pick = palette[Math.floor(Math.random() * palette.length)];
+      const pick = getWatercolorPick(wx + i * 12, wy - i * 7);
       const offsetAngle = Math.random() * Math.PI * 2;
       const offsetRadius = 8 + Math.random() * 26;
       const ox = Math.cos(offsetAngle) * offsetRadius;
@@ -243,7 +426,7 @@ export function createInkWorld(canvas) {
   }
 
   function applyForces(dt, audio) {
-    const friction = 0.99;
+    const friction = mode.physics.friction;
     ball.vx *= friction;
     ball.vy *= friction;
 
@@ -255,11 +438,11 @@ export function createInkWorld(canvas) {
     const t = performance.now() * 0.0006;
     const driftX = Math.cos(t) * 0.6 + Math.sin(t * 0.73) * 0.4;
     const driftY = Math.sin(t) * 0.6 + Math.cos(t * 0.91) * 0.4;
-    const drift = 28;
+    const drift = mode.physics.drift;
     ball.vx += driftX * drift * dt;
     ball.vy += driftY * drift * dt;
 
-    const push = 160 * audioSmooth.energy;
+    const push = mode.physics.push * audioSmooth.energy;
     const audioTilt = audioSmooth.high - audioSmooth.low;
     ball.vx += audioTilt * push * dt;
     ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
@@ -276,8 +459,8 @@ export function createInkWorld(canvas) {
       const dy = ball.y - ripple.y;
       const dist = Math.hypot(dx, dy) || 1;
       const wave = 1 - Math.min(1, ripple.age / life);
-      const falloff = 1 / (1 + dist * 0.015);
-      const impulse = 180 * ripple.strength * wave * falloff;
+      const falloff = 1 / (1 + dist * mode.physics.rippleFalloff);
+      const impulse = mode.physics.rippleImpulse * ripple.strength * wave * falloff;
       ball.vx += (dx / dist) * impulse * dt;
       ball.vy += (dy / dist) * impulse * dt;
     }
@@ -293,17 +476,19 @@ export function createInkWorld(canvas) {
 
     if (wobble.strength > 0.001) {
       wobble.time += dt * 6;
-      const wobbleDecay = Math.exp(-dt * 2.6);
+      const wobbleDecay = Math.exp(-dt * mode.physics.wobbleDecay);
       wobble.strength *= wobbleDecay;
-      const wobbleForce = 45 * wobble.strength;
+      const wobbleForce = mode.physics.wobbleForce * wobble.strength;
       ball.vx += Math.cos(wobble.time) * wobbleForce * dt;
       ball.vy += Math.sin(wobble.time * 1.2) * wobbleForce * dt;
     }
 
-    ball.inkR = 7 + Math.pow(audioSmooth.energy, 1.6) * 28;
-    ball.r = 9 + Math.pow(audioSmooth.energy, 1.2) * 8;
+    ball.inkR =
+      mode.inkRadius.base + Math.pow(audioSmooth.energy, mode.inkRadius.power) * mode.inkRadius.energyScale;
+    ball.r =
+      mode.ballRadius.base + Math.pow(audioSmooth.energy, mode.ballRadius.power) * mode.ballRadius.energyScale;
 
-    const vmax = 900;
+    const vmax = mode.physics.maxSpeed;
     const speed = Math.hypot(ball.vx, ball.vy);
     if (speed > vmax) {
       const k = vmax / speed;
@@ -334,11 +519,11 @@ export function createInkWorld(canvas) {
       ball.vx -= 2 * dot * nx;
       ball.vy -= 2 * dot * ny;
 
-      const restitution = 0.78;
+      const restitution = mode.physics.restitution;
       ball.vx *= restitution;
       ball.vy *= restitution;
 
-      const spin = 18;
+      const spin = mode.physics.spin;
       ball.vx += -ny * spin;
       ball.vy += nx * spin;
     }
@@ -352,6 +537,7 @@ export function createInkWorld(canvas) {
   function stampInkAt(wx, wy) {
     const b = worldToBuffer(wx, wy);
     const r = ball.inkR;
+    const stops = getInkStops(wx, wy);
 
     inkCtx.save();
     inkCtx.beginPath();
@@ -359,8 +545,8 @@ export function createInkWorld(canvas) {
     inkCtx.clip();
 
     const grad = inkCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
-    grad.addColorStop(0, "rgba(10,10,12,0.22)");
-    grad.addColorStop(1, "rgba(10,10,12,0.00)");
+    grad.addColorStop(0, stops.core);
+    grad.addColorStop(1, stops.edge);
     inkCtx.fillStyle = grad;
     inkCtx.beginPath();
     inkCtx.arc(b.x, b.y, r, 0, Math.PI * 2);
@@ -371,8 +557,9 @@ export function createInkWorld(canvas) {
 
   function stampWatercolorAt(wx, wy, pick) {
     const b = worldToBuffer(wx, wy);
-    const baseRadius = 30 + Math.random() * 18;
-    const ringCount = 3 + Math.floor(Math.random() * 3);
+    const baseRadius = mode.watercolor.baseRadius + Math.random() * mode.watercolor.jitter;
+    const ringCount =
+      mode.watercolor.ringMin + Math.floor(Math.random() * (mode.watercolor.ringMax - mode.watercolor.ringMin + 1));
 
     inkCtx.save();
     inkCtx.beginPath();
@@ -447,9 +634,9 @@ export function createInkWorld(canvas) {
     const p = worldToScreen(ball.x, ball.y);
     ctx.beginPath();
     ctx.arc(p.x, p.y, ball.r, 0, Math.PI * 2);
-    ctx.fillStyle = "#cc2222";
+    ctx.fillStyle = mode.ball.fill;
     ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.strokeStyle = mode.ball.stroke;
     ctx.lineWidth = 2;
     ctx.stroke();
   }
@@ -493,7 +680,7 @@ export function createInkWorld(canvas) {
   }
 
   function render() {
-    ctx.fillStyle = BG;
+    ctx.fillStyle = background;
     ctx.fillRect(0, 0, view.w(), view.h());
     drawInkBufferToScreen();
     drawWorldBorder();
@@ -516,6 +703,8 @@ export function createInkWorld(canvas) {
     step,
     render,
     exportInk,
+    setMode: applyMode,
+    getMode: () => currentMode,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
