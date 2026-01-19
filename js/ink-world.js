@@ -58,8 +58,8 @@ export function createInkWorld(canvas) {
     world.R = Math.min(view.w(), view.h()) * 1.35;
     world.cx = 0;
     world.cy = 0;
-    ball.x = 0;
-    ball.y = 0;
+    ball.x = world.cx;
+    ball.y = world.cy;
     ball.vx = 0;
     ball.vy = 0;
     ball.r = 10;
@@ -67,6 +67,7 @@ export function createInkWorld(canvas) {
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, view.w(), view.h());
     resizeInkBuffer();
+    updateCamera();
   }
 
   function screenToWorld(sx, sy) {
