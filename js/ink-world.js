@@ -47,6 +47,8 @@ export function createInkWorld(canvas) {
     draggingBall: false,
   };
 
+  const ripples = [];
+
   const inkBuffer = document.createElement("canvas");
   const inkCtx = inkBuffer.getContext("2d");
 
@@ -121,6 +123,13 @@ export function createInkWorld(canvas) {
     const w = screenToWorld(event.clientX, event.clientY);
     const d = dist2(w.x, w.y, ball.x, ball.y);
     pointer.draggingBall = d <= ball.r * ball.r * 5;
+
+    ripples.push({
+      x: w.x,
+      y: w.y,
+      age: 0,
+      strength: pointer.draggingBall ? 0.5 : 1,
+    });
   }
 
   function handlePointerMove(event) {
@@ -177,6 +186,24 @@ export function createInkWorld(canvas) {
     const audioTilt = audioSmooth.high - audioSmooth.low;
     ball.vx += audioTilt * push * dt;
     ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
+
+    for (let i = ripples.length - 1; i >= 0; i -= 1) {
+      const ripple = ripples[i];
+      ripple.age += dt;
+      const life = 1.2;
+      if (ripple.age > life) {
+        ripples.splice(i, 1);
+        continue;
+      }
+      const dx = ball.x - ripple.x;
+      const dy = ball.y - ripple.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const wave = 1 - Math.min(1, ripple.age / life);
+      const falloff = 1 / (1 + dist * 0.015);
+      const impulse = 180 * ripple.strength * wave * falloff;
+      ball.vx += (dx / dist) * impulse * dt;
+      ball.vy += (dy / dist) * impulse * dt;
+    }
 
     ball.inkR = 7 + Math.pow(audioSmooth.energy, 1.6) * 28;
     ball.r = 9 + Math.pow(audioSmooth.energy, 1.2) * 8;
