@@ -1,6 +1,7 @@
 const TAP_WINDOW = 320;
 const TAP_DISTANCE = 36;
 const LONG_PRESS_TIME = 0.5;
+const TAP_COMBO_WINDOW = 500;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -36,6 +37,10 @@ export function createResonanceSystem({ ball, screenToWorld }) {
   const state = {
     echoBoostUntil: 0,
     lastAudio: null,
+    tapCombo: 0,
+    lastTapImpulseAt: 0,
+    tapImpulse: null,
+    flingImpulse: null,
   };
 
   const events = [];
@@ -168,6 +173,23 @@ export function createResonanceSystem({ ball, screenToWorld }) {
           })),
         });
       } else {
+        const nowTap = performance.now();
+        if (nowTap - state.lastTapImpulseAt < TAP_COMBO_WINDOW) {
+          state.tapCombo += 1;
+        } else {
+          state.tapCombo = 1;
+        }
+        state.lastTapImpulseAt = nowTap;
+        const highBoost = clamp((audioState?.centroid ?? 0.5) + 0.1, 0, 1);
+        const comboBoost = 1 + state.tapCombo * 0.22;
+        const strength = 220 * comboBoost * (0.7 + highBoost * 0.8);
+        const dx = ball.x - w.x;
+        const dy = ball.y - w.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        state.tapImpulse = {
+          vx: (dx / dist) * strength,
+          vy: (dy / dist) * strength,
+        };
         emit({
           type: "tapWave",
           origin: { x: w.x, y: w.y },
@@ -194,6 +216,17 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     pointer.id = null;
     pointer.longPressArmed = false;
     pointer.draggingBall = false;
+
+    if (pointer.moved) {
+      const speed = Math.hypot(pointer.vx, pointer.vy);
+      if (speed > 2) {
+        const boost = clamp(speed / 20, 0.4, 1.2);
+        state.flingImpulse = {
+          vx: pointer.vx * 18 * boost,
+          vy: pointer.vy * 18 * boost,
+        };
+      }
+    }
   }
 
   function update(dt, audioState) {
@@ -265,6 +298,10 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     pointer.moved = false;
     pointer.longPressArmed = false;
     state.echoBoostUntil = 0;
+    state.tapCombo = 0;
+    state.lastTapImpulseAt = 0;
+    state.tapImpulse = null;
+    state.flingImpulse = null;
   }
 
   return {
@@ -281,7 +318,13 @@ export function createResonanceSystem({ ball, screenToWorld }) {
       downAt: pointer.downAt,
       target: pointer.target,
       world: screenToWorld(pointer.x, pointer.y),
+      tapImpulse: state.tapImpulse,
+      flingImpulse: state.flingImpulse,
     }),
+    clearImpulses: () => {
+      state.tapImpulse = null;
+      state.flingImpulse = null;
+    },
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

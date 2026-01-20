@@ -40,6 +40,16 @@ export function createPhysics({
       ball.vy += pointerState.vy * 0.03;
     }
 
+    if (pointerState?.tapImpulse) {
+      ball.vx += pointerState.tapImpulse.vx;
+      ball.vy += pointerState.tapImpulse.vy;
+    }
+
+    if (pointerState?.flingImpulse) {
+      ball.vx += pointerState.flingImpulse.vx;
+      ball.vy += pointerState.flingImpulse.vy;
+    }
+
     ball.inkR =
       modeState.mode.inkRadius.base +
       Math.pow(audioSmooth.energy, modeState.mode.inkRadius.power) * modeState.mode.inkRadius.energyScale;

@@ -124,7 +124,9 @@ export function createInkWorld(canvas) {
 
   function step(dt, audio) {
     resonance.update(dt, audio);
-    physics.applyForces(dt, audio, resonance.getPointerState());
+    const pointerState = resonance.getPointerState();
+    physics.applyForces(dt, audio, pointerState);
+    resonance.clearImpulses();
     physics.integrate(dt);
     physics.bounceInCircle();
     updateCamera();
