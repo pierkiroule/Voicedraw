@@ -34,6 +34,7 @@ export const modeSettings = {
       wobbleDecay: 2.4,
       restitution: 0.8,
       spin: 12,
+      gyroStrength: 80,
       maxSpeed: 700,
     },
     inkRadius: {
@@ -85,6 +86,7 @@ export const modeSettings = {
       wobbleDecay: 1.8,
       restitution: 0.86,
       spin: 24,
+      gyroStrength: 95,
       maxSpeed: 1200,
     },
     inkRadius: {
@@ -138,6 +140,7 @@ export const modeSettings = {
       wobbleDecay: 2.1,
       restitution: 0.82,
       spin: 18,
+      gyroStrength: 88,
       maxSpeed: 900,
     },
     inkRadius: {

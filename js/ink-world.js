@@ -133,6 +133,7 @@ export function createInkWorld(canvas) {
     resonance.clearImpulses();
     physics.integrate(dt);
     physics.bounceInCircle(audio);
+    physics.rescueSlowBall(audio);
     updateCamera();
     if (pointerState.down && pointerState.draggingBall) {
       renderer.stampWatercolorAt(pointerState.world.x, pointerState.world.y, getWatercolorPick(ball.x, ball.y));
