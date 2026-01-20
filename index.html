@@ -9,6 +9,32 @@
   <body>
     <canvas id="c"></canvas>
 
+    <div id="expressivityPanel" class="floating-panel" role="group" aria-label="Niveau d'expressivité">
+      <div id="expressivityHandle" class="panel-header" aria-hidden="true">Expressivité</div>
+      <div class="panel-body">
+        <div class="expressivity-readout">
+          <span class="expressivity-title">Niveau</span>
+          <span id="expressivityLabel" class="expressivity-value">Moyen</span>
+        </div>
+        <input
+          id="expressivitySlider"
+          class="expressivity-slider"
+          type="range"
+          min="0"
+          max="3"
+          step="1"
+          value="1"
+          aria-label="Niveau d'expressivité"
+        />
+        <div class="expressivity-scale" aria-hidden="true">
+          <span>Faible</span>
+          <span>Moyen</span>
+          <span>Fort</span>
+          <span>Très fort</span>
+        </div>
+      </div>
+    </div>
+
     <div id="hud">
       <div id="top">
         <div class="card" aria-live="polite">

@@ -22,6 +22,81 @@ canvas {
   display: block;
 }
 
+.floating-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: translate(var(--panel-x, 20px), var(--panel-y, 120px));
+  z-index: 5;
+  pointer-events: auto;
+  min-width: 220px;
+}
+
+.panel-header {
+  background: rgba(17, 17, 17, 0.88);
+  color: #fff;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 14px 14px 6px 6px;
+  cursor: grab;
+  user-select: none;
+}
+
+.floating-panel.dragging .panel-header {
+  cursor: grabbing;
+}
+
+.panel-body {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  padding: 12px 14px 14px;
+  backdrop-filter: blur(10px);
+  display: grid;
+  gap: 10px;
+}
+
+.expressivity-readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.expressivity-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  opacity: 0.6;
+}
+
+.expressivity-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.expressivity-slider {
+  width: 100%;
+  accent-color: #111;
+}
+
+.expressivity-scale {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  font-size: 11px;
+  opacity: 0.6;
+  text-align: center;
+}
+
+.expressivity-scale span {
+  white-space: nowrap;
+}
+
 #hud {
   position: fixed;
   inset: 0;

@@ -15,7 +15,9 @@ export function createPhysics({
     ball.vy *= friction;
 
     const smooth = 1 - Math.pow(0.001, dt);
-    audioSmooth.energy += (audio.energy - audioSmooth.energy) * smooth;
+    const expressivity = audio.expressivity ?? 1;
+    const scaledEnergy = Math.min(1, audio.energy * expressivity);
+    audioSmooth.energy += (scaledEnergy - audioSmooth.energy) * smooth;
     audioSmooth.low += (audio.low - audioSmooth.low) * smooth;
     audioSmooth.high += (audio.high - audioSmooth.high) * smooth;
 
@@ -26,7 +28,7 @@ export function createPhysics({
     ball.vx += driftX * drift * dt;
     ball.vy += driftY * drift * dt;
 
-    const push = modeState.mode.physics.push * audioSmooth.energy;
+    const push = modeState.mode.physics.push * audioSmooth.energy * expressivity;
     const audioTilt = audioSmooth.high - audioSmooth.low;
     ball.vx += audioTilt * push * dt;
     ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
