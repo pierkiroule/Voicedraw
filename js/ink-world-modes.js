@@ -6,6 +6,20 @@ export const modeSettings = {
       { core: "rgba(20, 18, 16, 0.26)", edge: "rgba(20, 18, 16, 0.0)" },
       { core: "rgba(32, 28, 24, 0.2)", edge: "rgba(32, 28, 24, 0.0)" },
     ],
+    inkBands: [
+      {
+        core: { rgb: [18, 16, 14], alpha: 0.42 },
+        edge: { rgb: [18, 16, 14], alpha: 0 },
+      },
+      {
+        core: { rgb: [34, 30, 26], alpha: 0.32 },
+        edge: { rgb: [34, 30, 26], alpha: 0 },
+      },
+      {
+        core: { rgb: [52, 46, 40], alpha: 0.26 },
+        edge: { rgb: [52, 46, 40], alpha: 0 },
+      },
+    ],
     ball: {
       fill: "#3b2320",
       stroke: "rgba(0,0,0,0.25)",
