@@ -66,7 +66,7 @@ export function createRenderer({
 
   function stampInkAt(wx, wy) {
     const b = worldToBuffer(wx, wy);
-    const r = ball.inkR;
+    const r = ball.inkR * (1 + lastAudio.energy * 0.6);
     const stops = getInkStops(wx, wy);
     const bands = modeState.mode.inkBands;
 
@@ -80,7 +80,7 @@ export function createRenderer({
       for (let i = 0; i < bands.length; i += 1) {
         const band = bands[i];
         const drift = (Math.sin(performance.now() * 0.003 + i * 1.7) + 1) * 0.08;
-        const intensity = clamp(audioBands[i] * 1.35 + drift + lastAudio.energy * 0.15, 0.08, 1);
+        const intensity = clamp(audioBands[i] * 1.6 + drift + lastAudio.energy * 0.25, 0.08, 1);
         const radius = r * (0.7 + i * 0.22 + intensity * 0.35);
         const grad = inkCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, radius);
         grad.addColorStop(0, makeRgba(band.core, intensity));
@@ -124,6 +124,52 @@ export function createRenderer({
     inkCtx.beginPath();
     inkCtx.ellipse(0, 0, smearRadius, smearRadius * 0.6, 0, 0, Math.PI * 2);
     inkCtx.fill();
+
+    inkCtx.restore();
+  }
+
+  function stampAudioSplashAt(wx, wy, audio) {
+    const b = worldToBuffer(wx, wy);
+    const intensity = clamp(audio.energy * 1.4 + audio.attack * 0.9, 0.2, 1);
+    const splashCount = 3 + Math.floor(intensity * 5);
+    const baseRadius = modeState.mode.watercolor.baseRadius * (0.6 + intensity * 0.6);
+
+    inkCtx.save();
+    inkCtx.beginPath();
+    inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
+    inkCtx.clip();
+
+    for (let i = 0; i < splashCount; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const ringRadius = baseRadius * (0.7 + Math.random() * 0.9);
+      const dist = ringRadius * (0.6 + Math.random() * 1.6);
+      const sx = b.x + Math.cos(angle) * dist;
+      const sy = b.y + Math.sin(angle) * dist;
+      const pick = getWatercolorPick?.(wx + Math.cos(angle) * 20, wy + Math.sin(angle) * 20) ?? getInkStops(wx, wy);
+      const grad = inkCtx.createRadialGradient(sx, sy, ringRadius * 0.1, sx, sy, ringRadius);
+      grad.addColorStop(0, pick.core);
+      grad.addColorStop(1, pick.edge);
+      inkCtx.fillStyle = grad;
+      inkCtx.beginPath();
+      inkCtx.ellipse(
+        sx,
+        sy,
+        ringRadius * (0.6 + Math.random() * 0.5),
+        ringRadius * (0.5 + Math.random() * 0.4),
+        angle,
+        0,
+        Math.PI * 2
+      );
+      inkCtx.fill();
+    }
+
+    const fractalCount = 5 + Math.floor(intensity * 6);
+    for (let i = 0; i < fractalCount; i += 1) {
+      const jitter = baseRadius * (0.4 + Math.random() * 1.2);
+      const sx = b.x + (Math.random() - 0.5) * jitter * 2.6;
+      const sy = b.y + (Math.random() - 0.5) * jitter * 2.6;
+      stampInkSmearAt(sx - inkBuffer.width * 0.5 + world.cx, sy - inkBuffer.height * 0.5 + world.cy);
+    }
 
     inkCtx.restore();
   }
@@ -462,6 +508,7 @@ export function createRenderer({
     resizeCanvas,
     resizeInkBuffer,
     stampWatercolorAt,
+    stampAudioSplashAt,
     stampInkToBuffer,
     stampInkSmearAt,
     renderPersistent,

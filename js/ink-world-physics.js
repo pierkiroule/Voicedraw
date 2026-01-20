@@ -52,16 +52,18 @@ export function createPhysics({
     ball.vx += driftX * drift * dt * freeBoost;
     ball.vy += driftY * drift * dt * freeBoost;
 
-    const push = modeState.mode.physics.push * audioSmooth.energy * expressivity;
+    const audioBoost = 1 + audioSmooth.energy * 1.6 * expressivity;
+    const push = modeState.mode.physics.push * audioSmooth.energy * expressivity * audioBoost;
     const audioTilt = audioSmooth.high - audioSmooth.low;
     ball.vx += audioTilt * push * dt;
-    ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
+    ball.vy += Math.sin(performance.now() * 0.0014) * 0.25 * push * dt;
 
     if (freeMove) {
       const flow = updateWander(now);
       const wanderForce = modeState.mode.physics.wander ?? 120;
-      ball.vx += flow.x * wanderForce * dt;
-      ball.vy += flow.y * wanderForce * dt;
+      const audioWander = 1 + audioSmooth.energy * 2.2;
+      ball.vx += flow.x * wanderForce * dt * audioWander;
+      ball.vy += flow.y * wanderForce * dt * audioWander;
     }
 
     if (pointerState?.down && pointerState.draggingBall) {
@@ -91,11 +93,14 @@ export function createPhysics({
       modeState.mode.ballRadius.base +
       Math.pow(audioSmooth.energy, modeState.mode.ballRadius.power) * modeState.mode.ballRadius.energyScale;
 
-    const vibe = (audio.attack * 18 + audio.energy * 10) * expressivity;
-    ball.traceOffset.x = Math.sin(now * 0.02 + audio.centroid * 6) * vibe;
-    ball.traceOffset.y = Math.cos(now * 0.018 + audio.centroid * 4) * vibe;
+    const vibe = (audio.attack * 26 + audio.energy * 18) * expressivity;
+    ball.traceOffset.x = Math.sin(now * 0.025 + audio.centroid * 7) * vibe;
+    ball.traceOffset.y = Math.cos(now * 0.022 + audio.centroid * 5) * vibe;
 
-    const vmax = modeState.mode.physics.maxSpeed * (freeMove ? 1.25 : 1);
+    const vmax =
+      modeState.mode.physics.maxSpeed *
+      (freeMove ? 1.35 : 1) *
+      (1 + audioSmooth.energy * 0.6 * expressivity);
     const speed = Math.hypot(ball.vx, ball.vy);
     if (speed > vmax) {
       const k = vmax / speed;
@@ -109,7 +114,7 @@ export function createPhysics({
     ball.y += ball.vy * dt;
   }
 
-  function bounceInCircle() {
+  function bounceInCircle(audio = { energy: 0 }) {
     const dx = ball.x - world.cx;
     const dy = ball.y - world.cy;
     const d = Math.hypot(dx, dy);
@@ -126,7 +131,7 @@ export function createPhysics({
       ball.vx -= 2 * dot * nx;
       ball.vy -= 2 * dot * ny;
 
-      const restitution = modeState.mode.physics.restitution;
+      const restitution = modeState.mode.physics.restitution + audio.energy * 0.12;
       ball.vx *= restitution;
       ball.vy *= restitution;
 

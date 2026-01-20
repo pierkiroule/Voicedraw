@@ -132,12 +132,18 @@ export function createInkWorld(canvas) {
     physics.applyForces(dt, audio, pointerState);
     resonance.clearImpulses();
     physics.integrate(dt);
-    physics.bounceInCircle();
+    physics.bounceInCircle(audio);
     updateCamera();
     if (pointerState.down && pointerState.draggingBall) {
       renderer.stampWatercolorAt(pointerState.world.x, pointerState.world.y, getWatercolorPick(ball.x, ball.y));
       if (Math.random() < 0.08) {
         renderer.stampInkSmearAt(pointerState.world.x, pointerState.world.y);
+      }
+    }
+    if (audio.on && !pointerState.down) {
+      const splashChance = 0.02 + audio.energy * 0.08 + audio.attack * 0.1;
+      if (Math.random() < splashChance) {
+        renderer.stampAudioSplashAt(ball.x, ball.y, audio);
       }
     }
     renderer.setAudioState(audio);
