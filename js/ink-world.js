@@ -130,9 +130,9 @@ export function createInkWorld(canvas) {
     resonance.update(dt, audio);
     const pointerState = resonance.getPointerState();
     physics.applyForces(dt, audio, pointerState);
+    physics.applyOrbitTrap(dt, audio, pointerState, audio?.expressivity ?? 1);
     resonance.clearImpulses();
     physics.integrate(dt);
-    physics.bounceInCircle(audio);
     physics.rescueSlowBall(audio);
     updateCamera();
     if (pointerState.down && pointerState.draggingBall) {
