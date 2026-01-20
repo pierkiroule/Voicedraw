@@ -34,10 +34,11 @@ export function createPhysics({
     if (pointerState?.down && pointerState.draggingBall) {
       const wx = pointerState.world.x;
       const wy = pointerState.world.y;
-      ball.x += (wx - ball.x) * 0.2;
-      ball.y += (wy - ball.y) * 0.2;
-      ball.vx += pointerState.vx * 0.03;
-      ball.vy += pointerState.vy * 0.03;
+      ball.x = wx;
+      ball.y = wy;
+      ball.vx = 0;
+      ball.vy = 0;
+      return;
     }
 
     if (pointerState?.tapImpulse) {

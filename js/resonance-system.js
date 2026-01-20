@@ -134,9 +134,9 @@ export function createResonanceSystem({ ball, screenToWorld }) {
         type: vibrato ? "dragVibrato" : "dragTrace",
         origin: start,
         target: end,
-        intensity: clamp(speed / 30, 0.2, 1),
+        intensity: clamp(speed / 30, 0.2, 1) * (vibrato ? 0.8 + audioState.centroid * 0.6 : 1),
         tone: audioState?.centroid ?? 0.5,
-        ttl: 0.25,
+        ttl: vibrato ? 0.4 : 0.25,
       });
     }
   }

@@ -12,6 +12,7 @@ export function createRenderer({
   worldToBuffer,
   worldToScreen,
   getInkStops,
+  getWatercolorPick,
 }) {
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -60,6 +61,31 @@ export function createRenderer({
     inkCtx.restore();
   }
 
+  function stampInkSmearAt(wx, wy) {
+    const b = worldToBuffer(wx, wy);
+    const smearRadius = 8 + Math.random() * 18;
+    const angle = Math.random() * Math.PI;
+    const stretch = 1.2 + Math.random() * 1.6;
+
+    inkCtx.save();
+    inkCtx.beginPath();
+    inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
+    inkCtx.clip();
+
+    inkCtx.translate(b.x, b.y);
+    inkCtx.rotate(angle);
+    inkCtx.scale(stretch, 1);
+    const grad = inkCtx.createRadialGradient(0, 0, smearRadius * 0.1, 0, 0, smearRadius);
+    grad.addColorStop(0, "rgba(18, 16, 14, 0.55)");
+    grad.addColorStop(1, "rgba(18, 16, 14, 0)");
+    inkCtx.fillStyle = grad;
+    inkCtx.beginPath();
+    inkCtx.ellipse(0, 0, smearRadius, smearRadius * 0.6, 0, 0, Math.PI * 2);
+    inkCtx.fill();
+
+    inkCtx.restore();
+  }
+
   function stampWatercolorAt(wx, wy, pick) {
     const b = worldToBuffer(wx, wy);
     const baseRadius = modeState.mode.watercolor.baseRadius + Math.random() * modeState.mode.watercolor.jitter;
@@ -92,6 +118,17 @@ export function createRenderer({
     }
 
     inkCtx.restore();
+  }
+
+  function stampCrystallizedStroke(start, end, intensity) {
+    const count = 2 + Math.floor(intensity * 4);
+    for (let i = 0; i < count; i += 1) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      const x = start.x + (end.x - start.x) * t;
+      const y = start.y + (end.y - start.y) * t;
+      const pick = getWatercolorPick?.(x + i * 3, y - i * 2) ?? getInkStops(x, y);
+      stampWatercolorAt(x, y, pick);
+    }
   }
 
   function stampInkToBuffer() {
@@ -305,7 +342,11 @@ export function createRenderer({
     const p1 = worldToScreen(event.target.x, event.target.y);
     const fade = fadeByAge(event);
     const width = 1 + event.intensity * 3;
-    const jitter = event.type === "dragVibrato" ? 3 + event.intensity * 6 : 0;
+    const jitter = event.type === "dragVibrato" ? 4 + event.intensity * 10 : 0;
+    if (event.type === "dragVibrato" && !event.persisted && event.age > event.ttl * 0.85) {
+      stampCrystallizedStroke(event.origin, event.target, event.intensity);
+      event.persisted = true;
+    }
 
     ctx.save();
     ctx.globalAlpha = fade * 0.7;
@@ -377,6 +418,7 @@ export function createRenderer({
     resizeInkBuffer,
     stampWatercolorAt,
     stampInkToBuffer,
+    stampInkSmearAt,
     renderPersistent,
     renderResonanceEvents,
     renderBall,

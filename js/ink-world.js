@@ -37,7 +37,7 @@ export function createInkWorld(canvas) {
   const inkBuffer = document.createElement("canvas");
   const inkCtx = inkBuffer.getContext("2d");
 
-  const { getInkStops } = createPalettePickers(modeState);
+  const { getInkStops, getWatercolorPick } = createPalettePickers(modeState);
 
   function screenToWorld(sx, sy) {
     return { x: sx + cam.x, y: sy + cam.y };
@@ -73,6 +73,7 @@ export function createInkWorld(canvas) {
     worldToBuffer,
     worldToScreen,
     getInkStops,
+    getWatercolorPick,
   });
 
   const resonance = createResonanceSystem({
@@ -130,6 +131,12 @@ export function createInkWorld(canvas) {
     physics.integrate(dt);
     physics.bounceInCircle();
     updateCamera();
+    if (pointerState.down && pointerState.draggingBall) {
+      renderer.stampWatercolorAt(pointerState.world.x, pointerState.world.y, getWatercolorPick(ball.x, ball.y));
+      if (Math.random() < 0.08) {
+        renderer.stampInkSmearAt(pointerState.world.x, pointerState.world.y);
+      }
+    }
     renderer.stampInkToBuffer();
   }
 
