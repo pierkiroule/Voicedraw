@@ -9,11 +9,19 @@ export function createRenderer({
   ball,
   cam,
   lastStamp,
-  droplets,
   worldToBuffer,
   worldToScreen,
   getInkStops,
+  getWatercolorPick,
 }) {
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function fadeByAge(event) {
+    return Math.max(0, 1 - event.age / event.ttl);
+  }
+
   function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.floor(window.innerWidth * dpr);
@@ -53,6 +61,31 @@ export function createRenderer({
     inkCtx.restore();
   }
 
+  function stampInkSmearAt(wx, wy) {
+    const b = worldToBuffer(wx, wy);
+    const smearRadius = 8 + Math.random() * 18;
+    const angle = Math.random() * Math.PI;
+    const stretch = 1.2 + Math.random() * 1.6;
+
+    inkCtx.save();
+    inkCtx.beginPath();
+    inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
+    inkCtx.clip();
+
+    inkCtx.translate(b.x, b.y);
+    inkCtx.rotate(angle);
+    inkCtx.scale(stretch, 1);
+    const grad = inkCtx.createRadialGradient(0, 0, smearRadius * 0.1, 0, 0, smearRadius);
+    grad.addColorStop(0, "rgba(18, 16, 14, 0.55)");
+    grad.addColorStop(1, "rgba(18, 16, 14, 0)");
+    inkCtx.fillStyle = grad;
+    inkCtx.beginPath();
+    inkCtx.ellipse(0, 0, smearRadius, smearRadius * 0.6, 0, 0, Math.PI * 2);
+    inkCtx.fill();
+
+    inkCtx.restore();
+  }
+
   function stampWatercolorAt(wx, wy, pick) {
     const b = worldToBuffer(wx, wy);
     const baseRadius = modeState.mode.watercolor.baseRadius + Math.random() * modeState.mode.watercolor.jitter;
@@ -85,6 +118,17 @@ export function createRenderer({
     }
 
     inkCtx.restore();
+  }
+
+  function stampCrystallizedStroke(start, end, intensity) {
+    const count = 2 + Math.floor(intensity * 4);
+    for (let i = 0; i < count; i += 1) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      const x = start.x + (end.x - start.x) * t;
+      const y = start.y + (end.y - start.y) * t;
+      const pick = getWatercolorPick?.(x + i * 3, y - i * 2) ?? getInkStops(x, y);
+      stampWatercolorAt(x, y, pick);
+    }
   }
 
   function stampInkToBuffer() {
@@ -140,42 +184,232 @@ export function createRenderer({
     ctx.stroke();
   }
 
-  function drawDroplets() {
-    for (let i = 0; i < droplets.length; i += 1) {
-      const drop = droplets[i];
-      const p = worldToScreen(drop.x, drop.y);
-      const time = performance.now() * 0.001;
-      const wave = Math.sin(time * 1.6 + drop.seed);
-      const shimmer = Math.sin(time * 0.9 + drop.seed * 2);
-      const swell = 1 + 0.08 * wave;
-      const stretch = 1 + 0.35 * shimmer;
-      const baseRadius = drop.baseRadius ?? 22;
-      const radius = baseRadius * (1.05 + 0.12 * wave);
-      const angle = shimmer * 0.35;
-      const alpha = 0.72 + 0.18 * wave;
-
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(angle);
-      ctx.scale(stretch, 1 / stretch);
-      const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius * swell);
-      grad.addColorStop(0, drop.core);
-      grad.addColorStop(1, drop.edge);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, radius * swell, radius * 0.7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  function render() {
+  function renderPersistent() {
     ctx.fillStyle = modeState.background;
     ctx.fillRect(0, 0, view.w(), view.h());
     drawInkBufferToScreen();
     drawWorldBorder();
-    drawDroplets();
+  }
+
+  function renderTapWave(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const target = worldToScreen(event.target.x, event.target.y);
+    const t = event.age / event.ttl;
+    const phase = event.phase ?? 0;
+    const driftX = (target.x - p.x) * t * 0.2;
+    const driftY = (target.y - p.y) * t * 0.2;
+    const radius = 40 + event.intensity * 90 + Math.sin((t + phase) * Math.PI * 2) * 6;
+    const scaled = radius * (1 - t * 0.4);
+    const distance = Math.hypot(target.x - p.x, target.y - p.y);
+    const warm = Math.min(1, distance / 300);
+    const coldColor = `rgba(80, 140, 210, ${0.35 + event.intensity * 0.15})`;
+    const warmColor = `rgba(240, 140, 80, ${0.3 + warm * 0.2})`;
+
+    ctx.save();
+    ctx.translate(p.x + driftX, p.y + driftY);
+    ctx.globalAlpha = fadeByAge(event);
+    const grad = ctx.createRadialGradient(0, 0, scaled * 0.2, 0, 0, scaled);
+    grad.addColorStop(0, coldColor);
+    grad.addColorStop(1, warmColor);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, scaled, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function renderBallSplash(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const t = event.age / event.ttl;
+    const fade = fadeByAge(event);
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade;
+
+    event.splashes.forEach((splash) => {
+      const dist = splash.radius * (0.6 + t * 0.6);
+      const sx = Math.cos(splash.angle) * dist;
+      const sy = Math.sin(splash.angle) * dist;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(splash.rotation);
+      const grad = ctx.createRadialGradient(0, 0, splash.rx * 0.1, 0, 0, splash.rx * 1.2);
+      grad.addColorStop(0, "rgba(30, 30, 30, 0.85)");
+      grad.addColorStop(0.6, "rgba(140, 140, 140, 0.55)");
+      grad.addColorStop(1, "rgba(255, 255, 255, 0.1)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, splash.rx, splash.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  function renderDoubleTapPulse(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const t = event.age / event.ttl;
+    const fade = fadeByAge(event);
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade * 0.6;
+    ctx.strokeStyle = "rgba(255,255,255,0.7)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, ball.r + t * 120, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = fade * 0.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, ball.r + t * 90, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function renderLongPress(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const t = event.age / event.ttl;
+    const fade = fadeByAge(event);
+    const radius = 40 + event.intensity * 70;
+    const dark = clamp(0.2 + event.tone * 0.6, 0.2, 0.8);
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade * 0.7;
+    const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
+    grad.addColorStop(0, `rgba(20, 20, 20, ${dark})`);
+    grad.addColorStop(1, "rgba(20, 20, 20, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (1 + t * 0.2), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function renderVoiceHalo(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const t = event.age / event.ttl;
+    const fade = fadeByAge(event);
+    const radius = ball.r + 30 + event.intensity * 120;
+    const thickness = 8 + (1 - event.tone) * 18;
+    const glow = event.tone > 0.6 ? 0.4 : 0.25;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade * (0.35 + event.intensity * 0.25);
+    ctx.strokeStyle = `rgba(60, 60, 60, ${glow})`;
+    ctx.lineWidth = thickness * (1 - t * 0.3);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * (0.9 + 0.1 * Math.sin(performance.now() * 0.002)), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function renderVoiceAttack(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const fade = fadeByAge(event);
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + event.intensity * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, ball.r + event.intensity * 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    event.splashes.forEach((splash) => {
+      const dist = splash.radius;
+      const sx = Math.cos(splash.angle) * dist;
+      const sy = Math.sin(splash.angle) * dist;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(splash.rotation);
+      ctx.globalAlpha = fade * 0.8;
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, splash.rx, splash.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }
+
+  function renderDragTrace(event) {
+    const p0 = worldToScreen(event.origin.x, event.origin.y);
+    const p1 = worldToScreen(event.target.x, event.target.y);
+    const fade = fadeByAge(event);
+    const width = 1 + event.intensity * 3;
+    const jitter = event.type === "dragVibrato" ? 4 + event.intensity * 10 : 0;
+    if (event.type === "dragVibrato" && !event.persisted && event.age > event.ttl * 0.85) {
+      stampCrystallizedStroke(event.origin, event.target, event.intensity);
+      event.persisted = true;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = fade * 0.7;
+    ctx.strokeStyle = "rgba(40, 40, 40, 0.5)";
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(p0.x + Math.sin(event.age * 50) * jitter, p0.y + Math.cos(event.age * 40) * jitter);
+    ctx.lineTo(p1.x - Math.cos(event.age * 45) * jitter, p1.y + Math.sin(event.age * 35) * jitter);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function renderPressPulse(event) {
+    const p = worldToScreen(event.origin.x, event.origin.y);
+    const fade = fadeByAge(event);
+    const radius = 14 + event.intensity * 40;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.globalAlpha = fade * 0.5;
+    ctx.strokeStyle = "rgba(40, 40, 40, 0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function renderResonanceEvents(events) {
+    events.forEach((event) => {
+      switch (event.type) {
+        case "tapWave":
+          renderTapWave(event);
+          break;
+        case "ballSplash":
+          renderBallSplash(event);
+          break;
+        case "doubleTapPulse":
+          renderDoubleTapPulse(event);
+          break;
+        case "longPressInk":
+          renderLongPress(event);
+          break;
+        case "voiceHalo":
+          renderVoiceHalo(event);
+          break;
+        case "voiceAttack":
+          renderVoiceAttack(event);
+          break;
+        case "dragTrace":
+        case "dragVibrato":
+          renderDragTrace(event);
+          break;
+        case "pressPulse":
+          renderPressPulse(event);
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  function renderBall() {
     drawBall();
   }
 
@@ -184,6 +418,9 @@ export function createRenderer({
     resizeInkBuffer,
     stampWatercolorAt,
     stampInkToBuffer,
-    render,
+    stampInkSmearAt,
+    renderPersistent,
+    renderResonanceEvents,
+    renderBall,
   };
 }

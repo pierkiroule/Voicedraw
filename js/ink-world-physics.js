@@ -2,14 +2,14 @@ export function createPhysics({
   modeState,
   world,
   ball,
-  pointer,
-  ripples,
-  wobble,
-  audioSmooth,
-  screenToWorld,
-  triggerLongPress,
 }) {
-  function applyForces(dt, audio) {
+  const audioSmooth = {
+    energy: 0,
+    low: 0,
+    high: 0,
+  };
+
+  function applyForces(dt, audio, pointerState) {
     const friction = modeState.mode.physics.friction;
     ball.vx *= friction;
     ball.vy *= friction;
@@ -31,40 +31,24 @@ export function createPhysics({
     ball.vx += audioTilt * push * dt;
     ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
 
-    for (let i = ripples.length - 1; i >= 0; i -= 1) {
-      const ripple = ripples[i];
-      ripple.age += dt;
-      const life = 1.2;
-      if (ripple.age > life) {
-        ripples.splice(i, 1);
-        continue;
-      }
-      const dx = ball.x - ripple.x;
-      const dy = ball.y - ripple.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const wave = 1 - Math.min(1, ripple.age / life);
-      const falloff = 1 / (1 + dist * modeState.mode.physics.rippleFalloff);
-      const impulse = modeState.mode.physics.rippleImpulse * ripple.strength * wave * falloff;
-      ball.vx += (dx / dist) * impulse * dt;
-      ball.vy += (dy / dist) * impulse * dt;
+    if (pointerState?.down && pointerState.draggingBall) {
+      const wx = pointerState.world.x;
+      const wy = pointerState.world.y;
+      ball.x = wx;
+      ball.y = wy;
+      ball.vx = 0;
+      ball.vy = 0;
+      return;
     }
 
-    if (pointer.down && !pointer.draggingBall && !pointer.longPressTriggered) {
-      const held = (performance.now() - pointer.downAt) / 1000;
-      if (held > 0.45) {
-        const w = screenToWorld(pointer.x, pointer.y);
-        triggerLongPress(w.x, w.y);
-        pointer.longPressTriggered = true;
-      }
+    if (pointerState?.tapImpulse) {
+      ball.vx += pointerState.tapImpulse.vx;
+      ball.vy += pointerState.tapImpulse.vy;
     }
 
-    if (wobble.strength > 0.001) {
-      wobble.time += dt * 6;
-      const wobbleDecay = Math.exp(-dt * modeState.mode.physics.wobbleDecay);
-      wobble.strength *= wobbleDecay;
-      const wobbleForce = modeState.mode.physics.wobbleForce * wobble.strength;
-      ball.vx += Math.cos(wobble.time) * wobbleForce * dt;
-      ball.vy += Math.sin(wobble.time * 1.2) * wobbleForce * dt;
+    if (pointerState?.flingImpulse) {
+      ball.vx += pointerState.flingImpulse.vx;
+      ball.vy += pointerState.flingImpulse.vy;
     }
 
     ball.inkR =
