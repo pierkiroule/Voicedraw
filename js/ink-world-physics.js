@@ -19,6 +19,48 @@ export function createPhysics({
     nextKickAt: 0,
   };
 
+  function applyOrbitTrap(dt, audio, pointerState, expressivity = 1) {
+    const R0 = 260;
+    const band = 220;
+    const kRadial = 18;
+    const kSwirl = 22;
+    const kNoise = 10;
+    const maxForce = 220;
+
+    if (pointerState?.down && pointerState.draggingBall) return;
+
+    const dx = ball.x - world.cx;
+    const dy = ball.y - world.cy;
+    const d = Math.hypot(dx, dy) || 1;
+    const nx = dx / d;
+    const ny = dy / d;
+
+    const err = d - R0;
+    const dead = Math.max(0, Math.abs(err) - band * 0.15);
+    const signed = Math.sign(err);
+
+    let fr = -signed * dead * kRadial;
+    fr = Math.max(-maxForce, Math.min(maxForce, fr));
+
+    const centroid = audio?.centroid ?? 0.5;
+    const swirlDir = centroid > 0.5 ? 1 : -1;
+    const swirlAmp = kSwirl * (0.3 + (audio?.energy ?? 0) * 0.7);
+
+    const t = performance.now() * 0.001;
+    const noise = (Math.sin(t * 0.9) + Math.sin(t * 1.37 + 1.2)) * 0.5 * kNoise;
+
+    const mult = expressivity;
+
+    ball.vx += nx * fr * dt * mult;
+    ball.vy += ny * fr * dt * mult;
+
+    ball.vx += -ny * swirlDir * swirlAmp * dt * mult;
+    ball.vy += nx * swirlDir * swirlAmp * dt * mult;
+
+    ball.vx += nx * noise * dt * mult;
+    ball.vy += ny * noise * dt * mult;
+  }
+
   function updateWander(now) {
     if (now >= wander.nextChange) {
       wander.targetAngle = Math.random() * Math.PI * 2;
@@ -190,6 +232,7 @@ export function createPhysics({
 
   return {
     applyForces,
+    applyOrbitTrap,
     integrate,
     rescueSlowBall,
     bounceInCircle,
