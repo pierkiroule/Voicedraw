@@ -14,12 +14,36 @@ export function createRenderer({
   getInkStops,
   getWatercolorPick,
 }) {
+  let lastAudio = {
+    energy: 0,
+    low: 0,
+    mid: 0,
+    high: 0,
+    centroid: 0.5,
+  };
+
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
   }
 
+  function makeRgba(color, alphaScale = 1) {
+    const alpha = clamp(color.alpha * alphaScale, 0, 1);
+    return `rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${alpha})`;
+  }
+
   function fadeByAge(event) {
     return Math.max(0, 1 - event.age / event.ttl);
+  }
+
+  function setAudioState(audio) {
+    if (!audio) return;
+    lastAudio = {
+      energy: audio.energy ?? 0,
+      low: audio.low ?? 0,
+      mid: audio.mid ?? 0,
+      high: audio.high ?? 0,
+      centroid: audio.centroid ?? 0.5,
+    };
   }
 
   function resizeCanvas() {
@@ -44,19 +68,37 @@ export function createRenderer({
     const b = worldToBuffer(wx, wy);
     const r = ball.inkR;
     const stops = getInkStops(wx, wy);
+    const bands = modeState.mode.inkBands;
 
     inkCtx.save();
     inkCtx.beginPath();
     inkCtx.arc(inkBuffer.width * 0.5, inkBuffer.height * 0.5, world.R, 0, Math.PI * 2);
     inkCtx.clip();
 
-    const grad = inkCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
-    grad.addColorStop(0, stops.core);
-    grad.addColorStop(1, stops.edge);
-    inkCtx.fillStyle = grad;
-    inkCtx.beginPath();
-    inkCtx.arc(b.x, b.y, r, 0, Math.PI * 2);
-    inkCtx.fill();
+    if (bands?.length === 3) {
+      const audioBands = [lastAudio.low, lastAudio.mid, lastAudio.high];
+      for (let i = 0; i < bands.length; i += 1) {
+        const band = bands[i];
+        const drift = (Math.sin(performance.now() * 0.003 + i * 1.7) + 1) * 0.08;
+        const intensity = clamp(audioBands[i] * 1.35 + drift + lastAudio.energy * 0.15, 0.08, 1);
+        const radius = r * (0.7 + i * 0.22 + intensity * 0.35);
+        const grad = inkCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, radius);
+        grad.addColorStop(0, makeRgba(band.core, intensity));
+        grad.addColorStop(1, makeRgba(band.edge, intensity * 0.9));
+        inkCtx.fillStyle = grad;
+        inkCtx.beginPath();
+        inkCtx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+        inkCtx.fill();
+      }
+    } else {
+      const grad = inkCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+      grad.addColorStop(0, stops.core);
+      grad.addColorStop(1, stops.edge);
+      inkCtx.fillStyle = grad;
+      inkCtx.beginPath();
+      inkCtx.arc(b.x, b.y, r, 0, Math.PI * 2);
+      inkCtx.fill();
+    }
 
     inkCtx.restore();
   }
@@ -132,8 +174,10 @@ export function createRenderer({
   }
 
   function stampInkToBuffer() {
-    const dx = ball.x - lastStamp.x;
-    const dy = ball.y - lastStamp.y;
+    const traceX = ball.x + (ball.traceOffset?.x ?? 0);
+    const traceY = ball.y + (ball.traceOffset?.y ?? 0);
+    const dx = traceX - lastStamp.x;
+    const dy = traceY - lastStamp.y;
     const dist = Math.hypot(dx, dy);
     const step = Math.max(1, ball.inkR * 0.35);
     const count = Math.max(1, Math.ceil(dist / step));
@@ -143,8 +187,8 @@ export function createRenderer({
       stampInkAt(lastStamp.x + dx * t, lastStamp.y + dy * t);
     }
 
-    lastStamp.x = ball.x;
-    lastStamp.y = ball.y;
+    lastStamp.x = traceX;
+    lastStamp.y = traceY;
   }
 
   function drawInkBufferToScreen() {
@@ -414,6 +458,7 @@ export function createRenderer({
   }
 
   return {
+    setAudioState,
     resizeCanvas,
     resizeInkBuffer,
     stampWatercolorAt,

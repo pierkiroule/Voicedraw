@@ -27,6 +27,7 @@ export function createInkWorld(canvas) {
     vy: 0,
     r: 10,
     inkR: 10,
+    traceOffset: { x: 0, y: 0 },
   };
 
   const lastStamp = {
@@ -91,6 +92,8 @@ export function createInkWorld(canvas) {
     ball.vy = 0;
     ball.r = 10;
     ball.inkR = 10;
+    ball.traceOffset.x = 0;
+    ball.traceOffset.y = 0;
     lastStamp.x = ball.x;
     lastStamp.y = ball.y;
     ctx.fillStyle = modeState.background;
@@ -137,6 +140,7 @@ export function createInkWorld(canvas) {
         renderer.stampInkSmearAt(pointerState.world.x, pointerState.world.y);
       }
     }
+    renderer.setAudioState(audio);
     renderer.stampInkToBuffer();
   }
 

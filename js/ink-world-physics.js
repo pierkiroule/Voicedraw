@@ -8,6 +8,27 @@ export function createPhysics({
     low: 0,
     high: 0,
   };
+  const wander = {
+    angle: Math.random() * Math.PI * 2,
+    targetAngle: Math.random() * Math.PI * 2,
+    speed: 0.4 + Math.random() * 0.6,
+    targetSpeed: 0.4 + Math.random() * 0.6,
+    nextChange: 0,
+  };
+
+  function updateWander(now) {
+    if (now >= wander.nextChange) {
+      wander.targetAngle = Math.random() * Math.PI * 2;
+      wander.targetSpeed = 0.35 + Math.random() * 0.9;
+      wander.nextChange = now + 1400 + Math.random() * 2200;
+    }
+    wander.angle += (wander.targetAngle - wander.angle) * 0.015;
+    wander.speed += (wander.targetSpeed - wander.speed) * 0.02;
+    return {
+      x: Math.cos(wander.angle) * wander.speed,
+      y: Math.sin(wander.angle) * wander.speed,
+    };
+  }
 
   function applyForces(dt, audio, pointerState) {
     const friction = modeState.mode.physics.friction;
@@ -21,17 +42,27 @@ export function createPhysics({
     audioSmooth.low += (audio.low - audioSmooth.low) * smooth;
     audioSmooth.high += (audio.high - audioSmooth.high) * smooth;
 
-    const t = performance.now() * 0.0006;
+    const now = performance.now();
+    const t = now * 0.0006;
     const driftX = Math.cos(t) * 0.6 + Math.sin(t * 0.73) * 0.4;
     const driftY = Math.sin(t) * 0.6 + Math.cos(t * 0.91) * 0.4;
     const drift = modeState.mode.physics.drift;
-    ball.vx += driftX * drift * dt;
-    ball.vy += driftY * drift * dt;
+    const freeMove = !pointerState?.down;
+    const freeBoost = freeMove ? 1.25 : 1;
+    ball.vx += driftX * drift * dt * freeBoost;
+    ball.vy += driftY * drift * dt * freeBoost;
 
     const push = modeState.mode.physics.push * audioSmooth.energy * expressivity;
     const audioTilt = audioSmooth.high - audioSmooth.low;
     ball.vx += audioTilt * push * dt;
     ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
+
+    if (freeMove) {
+      const flow = updateWander(now);
+      const wanderForce = modeState.mode.physics.wander ?? 120;
+      ball.vx += flow.x * wanderForce * dt;
+      ball.vy += flow.y * wanderForce * dt;
+    }
 
     if (pointerState?.down && pointerState.draggingBall) {
       const wx = pointerState.world.x;
@@ -60,7 +91,11 @@ export function createPhysics({
       modeState.mode.ballRadius.base +
       Math.pow(audioSmooth.energy, modeState.mode.ballRadius.power) * modeState.mode.ballRadius.energyScale;
 
-    const vmax = modeState.mode.physics.maxSpeed;
+    const vibe = (audio.attack * 18 + audio.energy * 10) * expressivity;
+    ball.traceOffset.x = Math.sin(now * 0.02 + audio.centroid * 6) * vibe;
+    ball.traceOffset.y = Math.cos(now * 0.018 + audio.centroid * 4) * vibe;
+
+    const vmax = modeState.mode.physics.maxSpeed * (freeMove ? 1.25 : 1);
     const speed = Math.hypot(ball.vx, ball.vy);
     if (speed > vmax) {
       const k = vmax / speed;
