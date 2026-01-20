@@ -48,8 +48,8 @@ export const modeSettings = {
       power: 1.1,
     },
     watercolor: {
-      baseRadius: 26,
-      jitter: 14,
+      baseRadius: 18,
+      jitter: 9,
       ringMin: 2,
       ringMax: 4,
     },
@@ -100,8 +100,8 @@ export const modeSettings = {
       power: 1.25,
     },
     watercolor: {
-      baseRadius: 34,
-      jitter: 18,
+      baseRadius: 24,
+      jitter: 12,
       ringMin: 3,
       ringMax: 6,
     },
@@ -154,8 +154,8 @@ export const modeSettings = {
       power: 1.2,
     },
     watercolor: {
-      baseRadius: 30,
-      jitter: 16,
+      baseRadius: 22,
+      jitter: 11,
       ringMin: 3,
       ringMax: 5,
     },

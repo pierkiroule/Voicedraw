@@ -43,8 +43,9 @@ export function createPhysics({
     fr = Math.max(-maxForce, Math.min(maxForce, fr));
 
     const centroid = audio?.centroid ?? 0.5;
-    const swirlDir = centroid > 0.5 ? 1 : -1;
+    const centroidBias = (centroid - 0.5) * 2;
     const swirlAmp = kSwirl * (0.3 + (audio?.energy ?? 0) * 0.7);
+    const swirl = centroidBias * swirlAmp;
 
     const t = performance.now() * 0.001;
     const noise = (Math.sin(t * 0.9) + Math.sin(t * 1.37 + 1.2)) * 0.5 * kNoise;
@@ -54,8 +55,8 @@ export function createPhysics({
     ball.vx += nx * fr * dt * mult;
     ball.vy += ny * fr * dt * mult;
 
-    ball.vx += -ny * swirlDir * swirlAmp * dt * mult;
-    ball.vy += nx * swirlDir * swirlAmp * dt * mult;
+    ball.vx += -ny * swirl * dt * mult;
+    ball.vy += nx * swirl * dt * mult;
 
     ball.vx += nx * noise * dt * mult;
     ball.vy += ny * noise * dt * mult;
