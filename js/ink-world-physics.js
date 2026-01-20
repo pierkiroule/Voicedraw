@@ -123,6 +123,8 @@ export function createPhysics({
     if (d > limit) {
       const nx = dx / (d || 1);
       const ny = dy / (d || 1);
+      const tx = -ny;
+      const ty = nx;
 
       ball.x = world.cx + nx * limit;
       ball.y = world.cy + ny * limit;
@@ -131,6 +133,10 @@ export function createPhysics({
       ball.vx -= 2 * dot * nx;
       ball.vy -= 2 * dot * ny;
 
+      const tangent = ball.vx * tx + ball.vy * ty;
+      ball.vx -= tangent * tx * 0.4;
+      ball.vy -= tangent * ty * 0.4;
+
       const restitution = modeState.mode.physics.restitution + audio.energy * 0.12;
       ball.vx *= restitution;
       ball.vy *= restitution;
@@ -138,6 +144,10 @@ export function createPhysics({
       const spin = modeState.mode.physics.spin;
       ball.vx += -ny * spin;
       ball.vy += nx * spin;
+
+      const edgePush = 140 + audio.energy * 180;
+      ball.vx -= nx * edgePush;
+      ball.vy -= ny * edgePush;
     }
   }
 
