@@ -20,9 +20,12 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     y: 0,
     lastX: 0,
     lastY: 0,
+    vx: 0,
+    vy: 0,
     pressure: 0,
     downAt: 0,
     target: "world",
+    draggingBall: false,
     moved: false,
     longPressArmed: false,
     lastTapAt: 0,
@@ -72,6 +75,7 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     const w = screenToWorld(event.clientX, event.clientY);
     const onBall = dist2(w.x, w.y, ball.x, ball.y) <= ball.r * ball.r * 3.2;
     pointer.target = onBall ? "ball" : "world";
+    pointer.draggingBall = onBall;
 
     if (isDoubleTap) {
       pointer.lastTapAt = 0;
@@ -107,6 +111,8 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     const dy = event.clientY - pointer.lastY;
     const speed = Math.hypot(dx, dy);
     pointer.moved = pointer.moved || speed > 2;
+    pointer.vx = dx;
+    pointer.vy = dy;
 
     pointer.lastX = event.clientX;
     pointer.lastY = event.clientY;
@@ -187,6 +193,7 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     pointer.down = false;
     pointer.id = null;
     pointer.longPressArmed = false;
+    pointer.draggingBall = false;
   }
 
   function update(dt, audioState) {
@@ -264,6 +271,17 @@ export function createResonanceSystem({ ball, screenToWorld }) {
     update,
     reset,
     getEvents: () => events,
+    getPointerState: () => ({
+      down: pointer.down,
+      x: pointer.x,
+      y: pointer.y,
+      vx: pointer.vx,
+      vy: pointer.vy,
+      draggingBall: pointer.draggingBall,
+      downAt: pointer.downAt,
+      target: pointer.target,
+      world: screenToWorld(pointer.x, pointer.y),
+    }),
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,

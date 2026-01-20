@@ -3,10 +3,21 @@ export function createPhysics({
   world,
   ball,
 }) {
-  function applyForces(dt) {
+  const audioSmooth = {
+    energy: 0,
+    low: 0,
+    high: 0,
+  };
+
+  function applyForces(dt, audio, pointerState) {
     const friction = modeState.mode.physics.friction;
     ball.vx *= friction;
     ball.vy *= friction;
+
+    const smooth = 1 - Math.pow(0.001, dt);
+    audioSmooth.energy += (audio.energy - audioSmooth.energy) * smooth;
+    audioSmooth.low += (audio.low - audioSmooth.low) * smooth;
+    audioSmooth.high += (audio.high - audioSmooth.high) * smooth;
 
     const t = performance.now() * 0.0006;
     const driftX = Math.cos(t) * 0.6 + Math.sin(t * 0.73) * 0.4;
@@ -15,8 +26,26 @@ export function createPhysics({
     ball.vx += driftX * drift * dt;
     ball.vy += driftY * drift * dt;
 
-    ball.inkR = modeState.mode.inkRadius.base;
-    ball.r = modeState.mode.ballRadius.base;
+    const push = modeState.mode.physics.push * audioSmooth.energy;
+    const audioTilt = audioSmooth.high - audioSmooth.low;
+    ball.vx += audioTilt * push * dt;
+    ball.vy += Math.sin(performance.now() * 0.0014) * 0.2 * push * dt;
+
+    if (pointerState?.down && pointerState.draggingBall) {
+      const wx = pointerState.world.x;
+      const wy = pointerState.world.y;
+      ball.x += (wx - ball.x) * 0.2;
+      ball.y += (wy - ball.y) * 0.2;
+      ball.vx += pointerState.vx * 0.03;
+      ball.vy += pointerState.vy * 0.03;
+    }
+
+    ball.inkR =
+      modeState.mode.inkRadius.base +
+      Math.pow(audioSmooth.energy, modeState.mode.inkRadius.power) * modeState.mode.inkRadius.energyScale;
+    ball.r =
+      modeState.mode.ballRadius.base +
+      Math.pow(audioSmooth.energy, modeState.mode.ballRadius.power) * modeState.mode.ballRadius.energyScale;
 
     const vmax = modeState.mode.physics.maxSpeed;
     const speed = Math.hypot(ball.vx, ball.vy);
