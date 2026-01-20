@@ -187,17 +187,45 @@ export function createRenderer({
     inkCtx.clip();
 
     for (let i = 0; i < ringCount; i += 1) {
+      const wobble = baseRadius * 0.22;
+      const cx = b.x + (Math.random() - 0.5) * wobble;
+      const cy = b.y + (Math.random() - 0.5) * wobble;
       const spread = baseRadius * (0.8 + Math.random() * 0.7);
-      const grad = inkCtx.createRadialGradient(b.x, b.y, spread * 0.1, b.x, b.y, spread);
+      const grad = inkCtx.createRadialGradient(cx, cy, spread * 0.1, cx, cy, spread);
       grad.addColorStop(0, pick.core);
       grad.addColorStop(1, pick.edge);
       inkCtx.fillStyle = grad;
       inkCtx.beginPath();
       inkCtx.ellipse(
-        b.x,
-        b.y,
+        cx,
+        cy,
         spread * (0.8 + Math.random() * 0.35),
         spread * (0.7 + Math.random() * 0.4),
+        Math.random() * Math.PI,
+        0,
+        Math.PI * 2
+      );
+      inkCtx.fill();
+    }
+
+    const bleedCount = 2 + Math.floor(Math.random() * 3);
+    inkCtx.globalAlpha = 0.7;
+    for (let i = 0; i < bleedCount; i += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const drift = baseRadius * (0.6 + Math.random() * 0.9);
+      const sx = b.x + Math.cos(angle) * drift;
+      const sy = b.y + Math.sin(angle) * drift;
+      const radius = baseRadius * (0.2 + Math.random() * 0.35);
+      const grad = inkCtx.createRadialGradient(sx, sy, radius * 0.1, sx, sy, radius);
+      grad.addColorStop(0, pick.core);
+      grad.addColorStop(1, pick.edge);
+      inkCtx.fillStyle = grad;
+      inkCtx.beginPath();
+      inkCtx.ellipse(
+        sx,
+        sy,
+        radius * (0.8 + Math.random() * 0.4),
+        radius * (0.6 + Math.random() * 0.5),
         Math.random() * Math.PI,
         0,
         Math.PI * 2
@@ -225,12 +253,20 @@ export function createRenderer({
     const dx = traceX - lastStamp.x;
     const dy = traceY - lastStamp.y;
     const dist = Math.hypot(dx, dy);
-    const step = Math.max(1, ball.inkR * 0.35);
+    const step = Math.max(1, ball.inkR * 0.25);
     const count = Math.max(1, Math.ceil(dist / step));
+    const now = performance.now() * 0.001;
+    const perpScale = dist > 0 ? 1 / dist : 0;
+    const px = -dy * perpScale;
+    const py = dx * perpScale;
 
     for (let i = 1; i <= count; i += 1) {
       const t = i / count;
-      stampInkAt(lastStamp.x + dx * t, lastStamp.y + dy * t);
+      const wave = Math.sin(now * 2.3 + t * Math.PI * 2) * ball.inkR * 0.18;
+      const jitter = (Math.random() - 0.5) * ball.inkR * 0.12;
+      const offsetX = px * (wave + jitter);
+      const offsetY = py * (wave + jitter);
+      stampInkAt(lastStamp.x + dx * t + offsetX, lastStamp.y + dy * t + offsetY);
     }
 
     lastStamp.x = traceX;

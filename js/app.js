@@ -7,6 +7,7 @@ const micTxt = document.getElementById("micTxt");
 const btnMic = document.getElementById("btnMic");
 const btnClear = document.getElementById("btnClear");
 const btnExport = document.getElementById("btnExport");
+const btnGyro = document.getElementById("btnGyro");
 const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
 const expressivityPanel = document.getElementById("expressivityPanel");
 const expressivityHandle = document.getElementById("expressivityHandle");
@@ -27,6 +28,14 @@ let expressivity = expressivityLevels[1];
 let panelPosition = { x: 20, y: 120 };
 let dragOffset = { x: 0, y: 0 };
 let draggingPanel = false;
+const gyroState = {
+  enabled: false,
+  supported: "DeviceOrientationEvent" in window,
+  x: 0,
+  y: 0,
+  smoothX: 0,
+  smoothY: 0,
+};
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -68,6 +77,16 @@ function setMicUI(isOn, text) {
   btnMic.textContent = isOn ? "Micro actif" : "Activer micro";
 }
 
+function setGyroUI() {
+  if (!gyroState.supported) {
+    btnGyro.textContent = "Gyro indisponible";
+    btnGyro.disabled = true;
+    return;
+  }
+  btnGyro.textContent = gyroState.enabled ? "Gyro actif" : "Activer gyroscope";
+  btnGyro.classList.toggle("active", gyroState.enabled);
+}
+
 async function handleMicClick() {
   if (audio.getState().on) return;
   const result = await audio.start();
@@ -85,6 +104,41 @@ function handleExport() {
   link.click();
 }
 
+function handleOrientation(event) {
+  if (!gyroState.enabled) return;
+  const beta = event.beta ?? 0;
+  const gamma = event.gamma ?? 0;
+  gyroState.x = clamp(gamma / 35, -1, 1);
+  gyroState.y = clamp(beta / 45, -1, 1);
+}
+
+async function handleGyroClick() {
+  if (!gyroState.supported) return;
+  if (gyroState.enabled) {
+    gyroState.enabled = false;
+    window.removeEventListener("deviceorientation", handleOrientation, true);
+    setGyroUI();
+    return;
+  }
+
+  if (typeof DeviceOrientationEvent?.requestPermission === "function") {
+    try {
+      const response = await DeviceOrientationEvent.requestPermission();
+      if (response !== "granted") {
+        setGyroUI();
+        return;
+      }
+    } catch (error) {
+      setGyroUI();
+      return;
+    }
+  }
+
+  gyroState.enabled = true;
+  window.addEventListener("deviceorientation", handleOrientation, true);
+  setGyroUI();
+}
+
 function handleResize() {
   world.resize();
   setPanelPosition(panelPosition.x, panelPosition.y);
@@ -93,6 +147,7 @@ function handleResize() {
 btnMic.addEventListener("click", handleMicClick);
 btnClear.addEventListener("click", world.resetWorld);
 btnExport.addEventListener("click", handleExport);
+btnGyro.addEventListener("click", handleGyroClick);
 modeButtons.forEach((button) => button.addEventListener("click", handleModeClick));
 
 expressivitySlider.addEventListener("input", (event) => {
@@ -136,6 +191,7 @@ world.resize();
 setModeUI(world.getMode());
 setExpressivityLevel(Number(expressivitySlider.value));
 setPanelPosition(panelPosition.x, panelPosition.y);
+setGyroUI();
 
 let last = performance.now();
 function frame(now) {
@@ -144,7 +200,17 @@ function frame(now) {
 
   audio.update();
   const audioState = audio.getState();
-  world.step(dt, { ...audioState, expressivity: expressivity.value });
+  gyroState.smoothX += (gyroState.x - gyroState.smoothX) * 0.08;
+  gyroState.smoothY += (gyroState.y - gyroState.smoothY) * 0.08;
+  world.step(dt, {
+    ...audioState,
+    expressivity: expressivity.value,
+    gyro: {
+      enabled: gyroState.enabled,
+      x: gyroState.smoothX,
+      y: gyroState.smoothY,
+    },
+  });
   world.render();
 
   requestAnimationFrame(frame);

@@ -15,6 +15,9 @@ export function createPhysics({
     targetSpeed: 0.4 + Math.random() * 0.6,
     nextChange: 0,
   };
+  const rescue = {
+    nextKickAt: 0,
+  };
 
   function updateWander(now) {
     if (now >= wander.nextChange) {
@@ -66,6 +69,13 @@ export function createPhysics({
       ball.vy += flow.y * wanderForce * dt * audioWander;
     }
 
+    const gyro = audio?.gyro;
+    if (gyro?.enabled) {
+      const gyroStrength = modeState.mode.physics.gyroStrength ?? 85;
+      ball.vx += gyro.x * gyroStrength * dt;
+      ball.vy += gyro.y * gyroStrength * dt;
+    }
+
     if (pointerState?.down && pointerState.draggingBall) {
       const wx = pointerState.world.x;
       const wy = pointerState.world.y;
@@ -114,6 +124,33 @@ export function createPhysics({
     ball.y += ball.vy * dt;
   }
 
+  function rescueSlowBall(audio = { energy: 0 }) {
+    const now = performance.now();
+    if (now < rescue.nextKickAt) return;
+    const dx = world.cx - ball.x;
+    const dy = world.cy - ball.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const speed = Math.hypot(ball.vx, ball.vy);
+    const edgeGap = world.R - ball.r - dist;
+    const nearEdge = edgeGap < 26;
+    const nearCenter = dist < Math.max(40, world.R * 0.06);
+    const farFromCenter = dist > world.R * 0.35;
+
+    if (speed > 18 || (!nearEdge && !nearCenter && !farFromCenter)) return;
+
+    rescue.nextKickAt = now + 450 + Math.random() * 450;
+    let nx = dx / dist;
+    let ny = dy / dist;
+    if (nearCenter) {
+      const angle = Math.random() * Math.PI * 2;
+      nx = Math.cos(angle);
+      ny = Math.sin(angle);
+    }
+    const strength = (nearEdge ? 240 : 160) + audio.energy * 140;
+    ball.vx += nx * strength;
+    ball.vy += ny * strength;
+  }
+
   function bounceInCircle(audio = { energy: 0 }) {
     const dx = ball.x - world.cx;
     const dy = ball.y - world.cy;
@@ -154,6 +191,7 @@ export function createPhysics({
   return {
     applyForces,
     integrate,
+    rescueSlowBall,
     bounceInCircle,
   };
 }
